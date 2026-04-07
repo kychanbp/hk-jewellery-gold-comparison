@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>香港金價比較</title>
+<style>
+:root {
+  --gold: #D4AF37;
+  --gold-light: #F5E6B8;
+  --gold-dark: #996515;
+  --bg: #1a1a2e;
+  --card: #16213e;
+  --text: #eee;
+  --text-dim: #999;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "Microsoft JhengHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 2rem;
+}
+.container { max-width: 640px; margin: 0 auto; padding: 0 12px; }
+
+/* Header */
+header {
+  background: linear-gradient(135deg, var(--card), #0f3460);
+  border-bottom: 3px solid var(--gold);
+  padding: 1rem 0;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+header h1 { font-size: 1.3rem; color: var(--gold); letter-spacing: 2px; }
+.header-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.update-info { font-size: 0.75rem; color: var(--text-dim); }
+.status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.status.ok { background: var(--green); }
+.status.loading { background: var(--gold); animation: pulse 1s infinite; }
+.status.error { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--gold-dark);
+  color: var(--gold);
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.refresh-btn:hover { background: var(--gold-dark); color: #fff; }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Spot banner */
+.spot-banner {
+  background: linear-gradient(90deg, #0f3460, var(--card));
+  border: 1px solid #2a2a4a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.spot-label { font-size: 0.8rem; color: var(--text-dim); }
+.spot-price { font-size: 1.3rem; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
+.spot-detail { font-size: 0.7rem; color: var(--text-dim); }
+
+/* Section */
+.section {
+  background: var(--card);
+  border-radius: 12px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid #2a2a4a;
+}
+.section-title {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gold);
+  border-bottom: 1px solid #2a2a4a;
+}
+
+/* Price table */
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.price-table th {
+  background: rgba(0,0,0,0.2);
+  color: var(--gold);
+  padding: 8px 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: right;
+  border-bottom: 1px solid #333;
+}
+.price-table th:first-child { text-align: left; padding-left: 16px; }
+.price-table td {
+  padding: 10px 6px;
+  font-size: 0.88rem;
+  text-align: right;
+  border-bottom: 1px solid #222;
+  font-variant-numeric: tabular-nums;
+}
+.price-table td:first-child {
+  text-align: left;
+  padding-left: 16px;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+.price-table tr:last-child td { border-bottom: none; }
+.best { color: var(--green) !important; font-weight: 700; }
+.markup-cell { font-size: 0.72rem; color: var(--text-dim); }
+.markup-cell.low { color: var(--green); }
+.markup-cell.high { color: var(--red); }
+.retailer-link { color: var(--gold-light); text-decoration: none; }
+.retailer-link:hover { text-decoration: underline; }
+.retailer-time { display: block; font-size: 0.65rem; color: var(--text-dim); font-weight: 400; }
+
+/* Spot row in table */
+.spot-row td {
+  color: var(--blue) !important;
+  font-style: italic;
+  border-bottom: 2px solid var(--gold-dark);
+}
+
+/* Calculator */
+.calc-body { padding: 14px 16px; }
+.calc-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.calc-row label {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  min-width: 45px;
+}
+.calc-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 1.1rem;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+.calc-input:focus { border-color: var(--gold); }
+.calc-unit { font-size: 0.85rem; color: var(--text-dim); }
+
+/* Calc results table */
+.calc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.calc-table th {
+  font-size: 0.7rem;
+  color: var(--gold);
+  font-weight: 500;
+  text-align: right;
+  padding: 6px 4px;
+  border-bottom: 1px solid #333;
+}
+.calc-table th:first-child { text-align: left; }
+.calc-table td {
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  text-align: right;
+  border-bottom: 1px solid #222;
+  font-variant-numeric: tabular-nums;
+}
+.calc-table td:first-child { text-align: left; font-weight: 600; color: var(--gold-light); }
+.calc-table tr:last-child td { border-bottom: none; }
+.calc-table .spot-row td { color: var(--blue) !important; font-style: italic; border-bottom: 2px solid var(--gold-dark); }
+.calc-best { color: var(--green); font-weight: 700; }
+.calc-worst { color: var(--red); }
+.calc-pct { font-size: 0.7rem; color: var(--text-dim); display: block; }
+
+/* Unit toggle */
+.unit-toggle {
+  display: flex;
+  background: var(--bg);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+.unit-btn {
+  flex: 1;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.unit-btn.active {
+  background: var(--gold-dark);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Explainer */
+.explainer {
+  background: var(--card);
+  border-radius: 12px;
+  margin-top: 14px;
+  border: 1px solid #2a2a4a;
+  overflow: hidden;
+}
+.explainer-toggle {
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.explainer-toggle:hover { background: rgba(255,255,255,0.03); }
+.explainer-toggle .arrow { transition: transform 0.2s; font-size: 0.7rem; }
+.explainer-toggle.open .arrow { transform: rotate(180deg); }
+.explainer-content {
+  display: none;
+  padding: 0 16px 16px;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+.explainer-content.open { display: block; }
+.explainer-content h3 {
+  color: var(--gold);
+  font-size: 0.85rem;
+  margin: 16px 0 6px;
+}
+.explainer-content h3:first-child { margin-top: 4px; }
+.explainer-content p { color: var(--text-dim); margin: 4px 0; }
+.explainer-content .highlight { color: var(--gold-light); font-weight: 600; }
+.explainer-content .green { color: var(--green); }
+.explainer-content .red { color: var(--red); }
+.explainer-content .blue { color: var(--blue); }
+.flow-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.flow-node {
+  background: rgba(212,175,55,0.1);
+  border: 1px solid var(--gold-dark);
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-align: center;
+}
+.flow-node .flow-label { font-size: 0.75rem; color: var(--text-dim); }
+.flow-node .flow-price { font-size: 1rem; font-weight: 700; color: var(--gold); }
+.flow-arrow {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  padding: 0 6px;
+  text-align: center;
+  line-height: 1.3;
+}
+.buyback-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.8rem;
+}
+.buyback-table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--gold);
+  font-weight: 500;
+  border-bottom: 1px solid #333;
+  font-size: 0.72rem;
+}
+.buyback-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #222;
+  font-variant-numeric: tabular-nums;
+}
+.buyback-table td:first-child { color: var(--gold-light); }
+
+/* Sources */
+.sources {
+  margin-top: 14px;
+  padding: 10px 16px;
+  background: var(--card);
+  border-radius: 10px;
+  border: 1px solid #2a2a4a;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.sources a { color: var(--text-dim); text-decoration: none; margin-right: 10px; }
+.sources a:hover { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>香港金價比較</h1>
+    <div class="header-row">
+      <span class="update-info">
+        <span class="status loading" id="status"></span>
+        <span id="update-time">載入中...</span>
+      </span>
+      <button class="refresh-btn" id="refresh-btn" onclick="refreshPrices()">即時更新</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Spot Gold Banner -->
+  <div class="spot-banner" id="spot-banner" style="display:none">
+    <div>
+      <div class="spot-label">國際金價 (現貨)</div>
+      <div class="spot-price" id="spot-hkd">—</div>
+      <div class="spot-detail" id="spot-detail"></div>
+    </div>
+    <div style="text-align:right">
+      <div class="spot-label">每兩</div>
+      <div class="spot-price" id="spot-tael" style="font-size:1rem">—</div>
+    </div>
+  </div>
+
+  <!-- 飾金 Table -->
+  <div class="section">
+    <div class="section-title">飾金 (足金 999.9)</div>
+    <table class="price-table">
+      <thead>
+        <tr>
+          <th>商戶</th>
+          <th>賣出(克)</th>
+          <th>溢價</th>
+          <th>賣出(兩)</th>
+          <th>買入(克)</th>
+          <th>買入(兩)</th>
+        </tr>
+      </thead>
+      <tbody id="table-jewellery"></tbody>
+    </table>
+  </div>
+
+  <!-- 金粒 Table -->
+  <div class="section">
+    <div class="section-title">金粒 (投資金)</div>
+    <table class="price-table">
+      <thead>
+        <tr>
+          <th>商戶</th>
+          <th>賣出(克)</th>
+          <th>溢價</th>
+          <th>賣出(兩)</th>
+          <th>買入(克)</th>
+          <th>買入(兩)</th>
+        </tr>
+      </thead>
+      <tbody id="table-bar"></tbody>
+    </table>
+  </div>
+
+  <!-- Calculator -->
+  <div class="section">
+    <div class="section-title">差價計算機</div>
+    <div class="calc-body">
+      <div class="calc-row">
+        <label>單位</label>
+        <div class="unit-toggle">
+          <button class="unit-btn active" id="unit-gram" onclick="setUnit('gram')">克</button>
+          <button class="unit-btn" id="unit-tael" onclick="setUnit('tael')">兩</button>
+        </div>
+      </div>
+      <div class="calc-row">
+        <label>重量</label>
+        <input class="calc-input" type="number" id="calc-weight" placeholder="輸入重量" min="0" step="0.01" oninput="onWeightInput()">
+        <span class="calc-unit" id="calc-unit-label">克</span>
+      </div>
+      <div id="calc-results"></div>
+    </div>
+  </div>
+
+  <!-- Explainer -->
+  <div class="explainer">
+    <button class="explainer-toggle" onclick="toggleExplainer(this)">
+      金價結構說明
+      <span class="arrow">&#9660;</span>
+    </button>
+    <div class="explainer-content" id="explainer-content">
+
+      <h3>金價層級（由低至高）</h3>
+
+      <p><span class="highlight">1. 國際金價 (Spot Price)</span></p>
+      <p>全球黃金批發基準價，用於銀行及機構交易，散戶無法直接以此價格購買實物黃金。</p>
+
+      <p><span class="highlight">2. 金粒 / 投資金</span> <span class="green" id="exp-bar-markup"></span></p>
+      <p>純金（24K）以簡單金粒或金條形式出售，無工藝加工。溢價包含：提煉、物流、零售利潤。是散戶購買實物黃金最接近國際金價的方式。</p>
+
+      <p><span class="highlight">3. 999.9 飾金</span> <span class="red" id="exp-jw-markup"></span></p>
+      <p>同樣 24K 純度，但經加工製成首飾。額外溢價包含：設計、工藝、品牌溢價、零售成本。買飾金 = 買黃金 + 買工藝。</p>
+
+      <div class="flow-chart" id="flow-chart"></div>
+
+      <h3>回收價說明</h3>
+      <p>當你將黃金賣回給金行時，回收價通常低於國際金價：</p>
+      <div id="buyback-section"></div>
+      <p style="margin-top:8px"><span class="highlight">換金價（Trade-in）</span>通常高於現金回收價，因為金行希望你留在其生態圈內、繼續購買新飾品。</p>
+
+    </div>
+  </div>
+
+  <!-- Sources -->
+  <div class="sources" id="sources"></div>
+</div>
+
+<script>
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+const TAEL_TO_GRAM = 37.429;
+let priceData = null;
+let currentUnit = "gram"; // "gram" or "tael"
+
+function setUnit(unit) {
+  const input = document.getElementById("calc-weight");
+  const val = parseFloat(input.value) || 0;
+  if (val > 0) {
+    // Convert the current value
+    if (unit === "tael" && currentUnit === "gram") {
+      input.value = (val / TAEL_TO_GRAM).toFixed(4);
+    } else if (unit === "gram" && currentUnit === "tael") {
+      input.value = (val * TAEL_TO_GRAM).toFixed(2);
+    }
+  }
+  currentUnit = unit;
+  document.getElementById("unit-gram").classList.toggle("active", unit === "gram");
+  document.getElementById("unit-tael").classList.toggle("active", unit === "tael");
+  document.getElementById("calc-unit-label").textContent = unit === "gram" ? "克" : "兩";
+  calculate();
+}
+
+function onWeightInput() {
+  calculate();
+}
+
+function getWeightInGrams() {
+  const val = parseFloat(document.getElementById("calc-weight").value) || 0;
+  return currentUnit === "tael" ? val * TAEL_TO_GRAM : val;
+}
+
+const SCRAPERS = {
+  ctf: {
+    name: "周大福",
+    url: "https://www.chowtaifook.com/zh-hk/eshop/realtime-gold-price.html",
+    parse(html) {
+      const m = html.match(/class="gold-price-data[^"]*"[^>]*value='([^']+)'/);
+      if (!m) throw new Error("CTF: cannot find data");
+      const d = JSON.parse(m[1]);
+      return {
+        updated_time: d.Updated_Time || "",
+        飾金: { 賣出_克: d.Gold_Sell_g, 賣出_兩: d.Gold_Sell, 買入_克: d.Gold_Buy_g, 買入_兩: d.Gold_Buy },
+        金粒: { 賣出_克: d.Gold_Pellet_Sell_g, 賣出_兩: d.Gold_Pellet_Sell, 買入_克: d.Gold_Pellet_Buy_g, 買入_兩: d.Gold_Pellet_Buy },
+      };
+    }
+  },
+  css: {
+    name: "周生生",
+    url: "https://www.chowsangsang.com/tc/gold-price",
+    apiUrl: "https://www.chowsangsang.com/script/api/crm/getGoldPrices.php?country=hk",
+    parse(json) {
+      const data = typeof json === "string" ? JSON.parse(json) : json;
+      const rates = {};
+      data.goldRates.forEach(r => rates[r.type] = r);
+      const g = (c, f) => rates[c]?.[f] || 0;
+      const dates = ["G_JW_SELL","G_BAR_SELL"].map(c => rates[c]?.entryDate || "").filter(Boolean);
+      return {
+        updated_time: dates.length ? dates.sort().pop() : "",
+        飾金: { 賣出_克: g("G_JW_SELL","ptRateInGram"), 賣出_兩: g("G_JW_SELL","ptRate"), 買入_克: g("G_JW_BUY","ptRateInGram"), 買入_兩: g("G_JW_BUY","ptRate") },
+        金粒: { 賣出_克: g("G_BAR_SELL","ptRateInGram"), 賣出_兩: g("G_BAR_SELL","ptRate"), 買入_克: g("G_BAR_BUY","ptRateInGram"), 買入_兩: g("G_BAR_BUY","ptRate") },
+      };
+    }
+  },
+  lf: {
+    name: "六福珠寶",
+    url: "https://www.lukfook.com/zh-hk/gold-price",
+    apiUrl: "https://www.lukfook.com/api/goldprice",
+    parse(json) {
+      const data = typeof json === "string" ? JSON.parse(json) : json;
+      const hk = data.data.hk.data;
+      const n = s => parseFloat((s || "0").replace(/,/g, ""));
+      return {
+        updated_time: "",
+        飾金: { 賣出_克: n(hk["9999/999金(克)"]["賣出(HKD)"]), 賣出_兩: n(hk["9999/999金(両)"]["賣出(HKD)"]), 買入_克: n(hk["9999/999金(克)"]["買入(HKD)"]), 買入_兩: n(hk["9999/999金(両)"]["買入(HKD)"]) },
+        金粒: { 賣出_克: n(hk["9999金粒(克)"]["賣出(HKD)"]), 賣出_兩: n(hk["9999金粒(両)"]["賣出(HKD)"]), 買入_克: n(hk["9999金粒(克)"]["買入(HKD)"]), 買入_兩: n(hk["9999金粒(両)"]["買入(HKD)"]) },
+      };
+    }
+  }
+};
+
+async function fetchSpotGold() {
+  // Try Yahoo Finance for gold futures
+  let goldUsd = null;
+  try {
+    const resp = await fetchViaProxy("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d");
+    const data = JSON.parse(resp);
+    goldUsd = data.chart.result[0].meta.regularMarketPrice;
+  } catch (e) {
+    console.warn("Yahoo gold failed:", e);
+    // Fallback: scrape kitco
+    try {
+      const html = await fetchViaProxy("https://www.kitco.com/gold-price-today-usa/");
+      const matches = [...html.matchAll(/(\d{3,4}\.\d{2})/g)].map(m => parseFloat(m[1])).filter(v => v > 2000 && v < 8000);
+      if (matches.length) goldUsd = Math.min(...matches); // bid price
+    } catch (e2) {
+      console.warn("Kitco failed:", e2);
+    }
+  }
+  if (!goldUsd) return null;
+
+  // USD/HKD rate
+  let usdHkd = 7.8; // fallback
+  try {
+    const fxResp = await fetch("https://api.frankfurter.app/latest?from=USD&to=HKD");
+    const fxData = await fxResp.json();
+    usdHkd = fxData.rates.HKD;
+  } catch (e) { console.warn("FX rate failed, using fallback:", e); }
+
+  const hkdPerGram = goldUsd * usdHkd / 31.1035;
+  return {
+    usd_per_oz: Math.round(goldUsd * 100) / 100,
+    usd_hkd: Math.round(usdHkd * 10000) / 10000,
+    hkd_per_gram: Math.round(hkdPerGram * 100) / 100,
+    hkd_per_tael: Math.round(hkdPerGram * 37.429 * 100) / 100,
+  };
+}
+
+async function fetchViaProxy(url) {
+  const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.text();
+}
+
+async function scrapeLive() {
+  const retailers = {};
+  const tasks = Object.entries(SCRAPERS).map(async ([key, cfg]) => {
+    try {
+      const text = await fetchViaProxy(cfg.apiUrl || cfg.url);
+      const prices = cfg.parse(text);
+      retailers[key] = { name: cfg.name, url: cfg.url, scraped_at: new Date().toISOString(), ...prices };
+    } catch (e) { console.warn(`${key} failed:`, e); }
+  });
+  const spotTask = fetchSpotGold();
+  await Promise.all([...tasks, spotTask]);
+  const spot = await spotTask;
+  return { updated_at: new Date().toISOString(), spot, retailers, source: "live" };
+}
+
+async function fetchCached() {
+  const resp = await fetch("data/prices.json");
+  if (!resp.ok) throw new Error("No cached data");
+  return resp.json();
+}
+
+async function refreshPrices() {
+  const btn = document.getElementById("refresh-btn");
+  const statusEl = document.getElementById("status");
+  btn.disabled = true;
+  statusEl.className = "status loading";
+  document.getElementById("update-time").textContent = "正在更新...";
+  try {
+    const data = await scrapeLive();
+    if (Object.keys(data.retailers).length > 0) {
+      if (priceData) {
+        for (const [k, v] of Object.entries(data.retailers)) {
+          priceData.retailers[k] = v;
+        }
+        if (data.spot) priceData.spot = data.spot;
+        priceData.updated_at = data.updated_at;
+      } else {
+        priceData = data;
+      }
+      render();
+      statusEl.className = "status ok";
+      document.getElementById("update-time").textContent = "即時更新: " + new Date().toLocaleString("zh-HK");
+    } else throw new Error("No data");
+  } catch (e) {
+    statusEl.className = "status error";
+    document.getElementById("update-time").textContent = "更新失敗";
+  }
+  btn.disabled = false;
+}
+
+async function init() {
+  try {
+    priceData = await fetchCached();
+    render();
+    document.getElementById("status").className = "status ok";
+    document.getElementById("update-time").textContent = "最後更新: " + new Date(priceData.updated_at).toLocaleString("zh-HK");
+  } catch (e) { console.log("No cached data"); }
+
+  try {
+    const live = await scrapeLive();
+    if (Object.keys(live.retailers).length > 0) {
+      // Merge live data into existing — don't lose retailers that failed in live scrape
+      if (priceData) {
+        for (const [k, v] of Object.entries(live.retailers)) {
+          priceData.retailers[k] = v;
+        }
+        if (live.spot) priceData.spot = live.spot;
+        priceData.updated_at = live.updated_at;
+      } else {
+        priceData = live;
+      }
+      render();
+      document.getElementById("status").className = "status ok";
+      document.getElementById("update-time").textContent = "即時更新: " + new Date().toLocaleString("zh-HK");
+    }
+  } catch (e) {
+    if (!priceData) {
+      document.getElementById("status").className = "status error";
+      document.getElementById("update-time").textContent = "無法取得資料";
+    }
+  }
+}
+
+const fmt = v => v ? v.toLocaleString("en", {minimumFractionDigits:2, maximumFractionDigits:2}) : "—";
+const fmtInt = v => v ? v.toLocaleString("en", {maximumFractionDigits:0}) : "—";
+
+function formatRetailerTime(updatedTime, scrapedAt) {
+  // updatedTime: retailer's own timestamp (e.g. "2026-04-07 16:57:02" or "07/04/2026 09:15:00")
+  // scrapedAt: when we scraped it
+  if (updatedTime) {
+    // Normalize different date formats
+    let d;
+    if (updatedTime.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+      // DD/MM/YYYY HH:MM:SS
+      const [date, time] = updatedTime.split(" ");
+      const [dd, mm, yyyy] = date.split("/");
+      d = new Date(`${yyyy}-${mm}-${dd}T${time}`);
+    } else {
+      d = new Date(updatedTime);
+    }
+    if (!isNaN(d)) return "報價: " + d.toLocaleString("zh-HK", {month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit"});
+  }
+  if (scrapedAt) {
+    const d = new Date(scrapedAt);
+    if (!isNaN(d)) return "擷取: " + d.toLocaleString("zh-HK", {month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit"});
+  }
+  return "";
+}
+
+function render() {
+  renderSpot();
+  renderTable("飾金", "table-jewellery");
+  renderTable("金粒", "table-bar");
+  renderExplainer();
+  renderSources();
+  calculate();
+}
+
+function renderSpot() {
+  const banner = document.getElementById("spot-banner");
+  const spot = priceData?.spot;
+  if (!spot) { banner.style.display = "none"; return; }
+  banner.style.display = "flex";
+  document.getElementById("spot-hkd").textContent = `HK$ ${fmt(spot.hkd_per_gram)} / 克`;
+  document.getElementById("spot-tael").textContent = `HK$ ${fmtInt(spot.hkd_per_tael)}`;
+  document.getElementById("spot-detail").textContent = `USD ${fmt(spot.usd_per_oz)}/oz × ${spot.usd_hkd}`;
+}
+
+function renderTable(type, tbodyId) {
+  if (!priceData) return;
+  const tbody = document.getElementById(tbodyId);
+  const spot = priceData.spot;
+  const entries = Object.entries(priceData.retailers)
+    .map(([k, r]) => ({key: k, ...r}))
+    .filter(r => r[type]);
+
+  entries.sort((a, b) => (a[type].賣出_克 || Infinity) - (b[type].賣出_克 || Infinity));
+
+  const sells = entries.map(r => r[type].賣出_克).filter(v => v > 0);
+  const buys = entries.map(r => r[type].買入_克).filter(v => v > 0);
+  const minSell = Math.min(...sells);
+  const maxBuy = Math.max(...buys);
+
+  let html = "";
+
+  // Spot row
+  if (spot) {
+    html += `<tr class="spot-row">
+      <td>國際金價</td>
+      <td>${fmt(spot.hkd_per_gram)}</td>
+      <td class="markup-cell">—</td>
+      <td>${fmtInt(spot.hkd_per_tael)}</td>
+      <td colspan="2" style="font-size:0.75rem">USD ${fmt(spot.usd_per_oz)}/oz</td>
+    </tr>`;
+  }
+
+  html += entries.map(r => {
+    const p = r[type];
+    const sellBest = p.賣出_克 === minSell ? "best" : "";
+    const buyBest = p.買入_克 === maxBuy ? "best" : "";
+    let markupHtml = "—";
+    if (spot && p.賣出_克 > 0) {
+      const pct = ((p.賣出_克 - spot.hkd_per_gram) / spot.hkd_per_gram * 100);
+      const cls = pct <= Math.min(...entries.map(e => (e[type].賣出_克 - spot.hkd_per_gram) / spot.hkd_per_gram * 100)) ? "low" : pct >= Math.max(...entries.map(e => (e[type].賣出_克 - spot.hkd_per_gram) / spot.hkd_per_gram * 100)) ? "high" : "";
+      markupHtml = `<span class="markup-cell ${cls}">+${pct.toFixed(1)}%</span>`;
+    }
+    const timeStr = formatRetailerTime(r.updated_time, r.scraped_at);
+    return `<tr>
+      <td><a class="retailer-link" href="${r.url}" target="_blank">${r.name}</a><span class="retailer-time">${timeStr}</span></td>
+      <td class="${sellBest}">${fmt(p.賣出_克)}</td>
+      <td>${markupHtml}</td>
+      <td class="${sellBest && 'best'}">${fmtInt(p.賣出_兩)}</td>
+      <td class="${buyBest}">${fmt(p.買入_克)}</td>
+      <td class="${buyBest && 'best'}">${fmtInt(p.買入_兩)}</td>
+    </tr>`;
+  }).join("");
+
+  tbody.innerHTML = html;
+}
+
+function renderSources() {
+  if (!priceData) return;
+  document.getElementById("sources").innerHTML =
+    "資料來源: " +
+    Object.values(priceData.retailers).map(r => `<a href="${r.url}" target="_blank">${r.name}</a>`).join("") +
+    '<a href="https://www.kitco.com" target="_blank">Kitco</a>';
+}
+
+function calculate() {
+  if (!priceData) return;
+  const weight = getWeightInGrams();
+  const container = document.getElementById("calc-results");
+
+  if (weight <= 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:1rem;font-size:0.85rem">請輸入重量（克）</div>';
+    return;
+  }
+
+  const spot = priceData.spot;
+  const spotTotal = spot ? spot.hkd_per_gram * weight : 0;
+
+  const entries = Object.entries(priceData.retailers)
+    .map(([k, r]) => {
+      const jw = (r.飾金?.賣出_克 || 0) * weight;
+      const bar = (r.金粒?.賣出_克 || 0) * weight;
+      const jwMarkup = jw - bar;
+      const jwPct = bar > 0 ? (jwMarkup / bar * 100) : 0;
+      const spotMarkupJw = spotTotal > 0 ? ((jw - spotTotal) / spotTotal * 100) : 0;
+      const spotMarkupBar = spotTotal > 0 ? ((bar - spotTotal) / spotTotal * 100) : 0;
+      return { name: r.name, jw, bar, jwMarkup, jwPct, spotMarkupJw, spotMarkupBar };
+    })
+    .filter(r => r.jw > 0 && r.bar > 0)
+    .sort((a, b) => a.bar - b.bar);
+
+  const fmtD = v => "HK$ " + v.toLocaleString("en", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const minBar = Math.min(...entries.map(e => e.bar));
+  const minJw = Math.min(...entries.map(e => e.jw));
+
+  let html = `<table class="calc-table">
+    <thead><tr>
+      <th style="text-align:left">商戶</th>
+      <th>金粒總價</th>
+      <th>飾金總價</th>
+      <th>飾金加工費</th>
+    </tr></thead><tbody>`;
+
+  // Spot row
+  if (spot) {
+    html += `<tr class="spot-row">
+      <td>國際金價</td>
+      <td colspan="3">${fmtD(spotTotal)}</td>
+    </tr>`;
+  }
+
+  html += entries.map(r => {
+    const barCls = r.bar === minBar ? "calc-best" : "";
+    const jwCls = r.jw === minJw ? "calc-best" : "";
+    return `<tr>
+      <td>${r.name}</td>
+      <td class="${barCls}">${fmtD(r.bar)}<span class="calc-pct">${spot ? `+${r.spotMarkupBar.toFixed(1)}% vs 國際` : ""}</span></td>
+      <td class="${jwCls}">${fmtD(r.jw)}<span class="calc-pct">${spot ? `+${r.spotMarkupJw.toFixed(1)}% vs 國際` : ""}</span></td>
+      <td>${fmtD(r.jwMarkup)}<span class="calc-pct">+${r.jwPct.toFixed(1)}%</span></td>
+    </tr>`;
+  }).join("");
+
+  html += "</tbody></table>";
+  container.innerHTML = html;
+}
+
+function toggleExplainer(btn) {
+  btn.classList.toggle("open");
+  document.getElementById("explainer-content").classList.toggle("open");
+}
+
+function renderExplainer() {
+  if (!priceData) return;
+  const spot = priceData.spot;
+  const ctf = priceData.retailers.ctf;
+  if (!spot || !ctf) return;
+
+  const spotG = spot.hkd_per_gram;
+  const barG = ctf.金粒?.賣出_克 || 0;
+  const jwG = ctf.飾金?.賣出_克 || 0;
+  const barPct = ((barG - spotG) / spotG * 100).toFixed(1);
+  const jwPct = ((jwG - spotG) / spotG * 100).toFixed(1);
+  const craftPct = barG > 0 ? ((jwG - barG) / barG * 100).toFixed(1) : "—";
+
+  document.getElementById("exp-bar-markup").textContent = `(+${barPct}% vs 國際金價)`;
+  document.getElementById("exp-jw-markup").textContent = `(+${jwPct}% vs 國際金價)`;
+
+  // Flow chart
+  document.getElementById("flow-chart").innerHTML = `
+    <div class="flow-node">
+      <div class="flow-label">國際金價</div>
+      <div class="flow-price">${fmtInt(spotG)}</div>
+    </div>
+    <div class="flow-arrow">─ +${barPct}% ─▶<br><span style="font-size:0.65rem">零售溢價</span></div>
+    <div class="flow-node">
+      <div class="flow-label">金粒</div>
+      <div class="flow-price">${fmtInt(barG)}</div>
+    </div>
+    <div class="flow-arrow">─ +${craftPct}% ─▶<br><span style="font-size:0.65rem">加工費</span></div>
+    <div class="flow-node">
+      <div class="flow-label">飾金</div>
+      <div class="flow-price">${fmtInt(jwG)}</div>
+    </div>
+  `;
+
+  // Buyback table
+  const buyBarG = ctf.金粒?.買入_克 || 0;
+  const buyJwG = ctf.飾金?.買入_克 || 0;
+  const buyBarPct = ((buyBarG - spotG) / spotG * 100).toFixed(1);
+  const buyJwPct = ((buyJwG - spotG) / spotG * 100).toFixed(1);
+
+  document.getElementById("buyback-section").innerHTML = `
+    <table class="buyback-table">
+      <thead><tr><th>類別</th><th>回收價 (克)</th><th>vs 國際金價</th></tr></thead>
+      <tbody>
+        <tr><td>金粒（投資金）</td><td>HK$ ${fmt(buyBarG)}</td><td class="red">${buyBarPct}%</td></tr>
+        <tr><td>999.9 飾金</td><td>HK$ ${fmt(buyJwG)}</td><td class="red">${buyJwPct}%</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.75rem;color:var(--text-dim);margin-top:4px">* 以周大福為例</p>
+  `;
+}
+
+init();
+</script>
+</body>
+</html>
