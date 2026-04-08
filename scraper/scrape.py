@@ -137,13 +137,21 @@ TROY_OZ_TO_GRAM = 31.1035
 
 
 def _gold_usd_from_yahoo():
-    """Gold price in USD/oz from Yahoo Finance."""
-    resp = requests.get(
-        "https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d",
-        headers=HEADERS, timeout=15,
-    )
-    resp.raise_for_status()
-    return resp.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
+    """Spot gold price in USD/oz from Yahoo Finance (XAUUSD=X)."""
+    # Use XAUUSD=X (spot) instead of GC=F (futures) — spot trades nearly 24h
+    for ticker in ["XAUUSD=X", "GC=F"]:
+        try:
+            resp = requests.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d",
+                headers=HEADERS, timeout=15,
+            )
+            resp.raise_for_status()
+            price = resp.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
+            print(f"    Yahoo ticker: {ticker} — USD {price}/oz")
+            return price
+        except Exception as e:
+            print(f"    Yahoo {ticker} failed: {e}")
+    raise ValueError("All Yahoo tickers failed")
 
 
 def _gold_usd_from_kitco():
@@ -160,7 +168,7 @@ def _gold_usd_from_kitco():
 
 def fetch_spot_gold_hkd():
     """Fetch spot gold price in HKD per gram.
-    Tries Yahoo Finance first, falls back to Kitco.
+    Tries Yahoo Finance (XAUUSD spot) first, falls back to Kitco.
     Uses Frankfurter for USD/HKD rate.
     """
     # Gold price in USD per troy ounce
