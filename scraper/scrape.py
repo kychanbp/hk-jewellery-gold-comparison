@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 HKT = timezone(timedelta(hours=8))
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 OUTPUT_FILE = os.path.join(DATA_DIR, "prices.json")
+HISTORY_FILE = os.path.join(DATA_DIR, "price_history.json")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -243,8 +244,52 @@ def main():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
+    # Append to price history
+    append_to_history(output)
+
     print(f"\nSaved to {OUTPUT_FILE}")
     print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+def append_to_history(data):
+    """Append a flattened price record to the history file."""
+    record = {
+        "timestamp": data["updated_at"],
+    }
+
+    # Spot price
+    spot = data.get("spot")
+    if spot:
+        record["spot_hkd_per_gram"] = spot["hkd_per_gram"]
+        record["spot_usd_per_oz"] = spot["usd_per_oz"]
+
+    # Retailer sell prices (per gram) — the most useful for comparison
+    for key, retailer in data.get("retailers", {}).items():
+        record[f"{key}_jewellery_sell"] = retailer.get("飾金", {}).get("賣出_克", 0)
+        record[f"{key}_jewellery_buy"] = retailer.get("飾金", {}).get("買入_克", 0)
+        record[f"{key}_bar_sell"] = retailer.get("金粒", {}).get("賣出_克", 0)
+        record[f"{key}_bar_buy"] = retailer.get("金粒", {}).get("買入_克", 0)
+
+    # Load existing history
+    history = []
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            try:
+                history = json.load(f)
+            except json.JSONDecodeError:
+                history = []
+
+    # Skip duplicate if last entry has the same timestamp
+    if history and history[-1].get("timestamp") == record["timestamp"]:
+        print(f"History: skipping duplicate timestamp {record['timestamp']}")
+        return
+
+    history.append(record)
+
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=None)
+
+    print(f"History: appended record ({len(history)} total) to {HISTORY_FILE}")
 
 
 if __name__ == "__main__":
