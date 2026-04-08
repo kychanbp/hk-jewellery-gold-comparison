@@ -604,14 +604,20 @@ const SCRAPERS = {
 };
 
 async function fetchSpotGold() {
-  // Try Yahoo Finance for gold futures
+  // Try Yahoo Finance for spot gold (XAUUSD=X first, then GC=F futures fallback)
   let goldUsd = null;
-  try {
-    const resp = await fetchViaProxy("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d");
-    const data = JSON.parse(resp);
-    goldUsd = data.chart.result[0].meta.regularMarketPrice;
-  } catch (e) {
-    console.warn("Yahoo gold failed:", e);
+  for (const ticker of ["XAUUSD=X", "GC=F"]) {
+    try {
+      const resp = await fetchViaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`);
+      const data = JSON.parse(resp);
+      goldUsd = data.chart.result[0].meta.regularMarketPrice;
+      console.log(`Yahoo ${ticker}: USD ${goldUsd}/oz`);
+      break;
+    } catch (e) {
+      console.warn(`Yahoo ${ticker} failed:`, e);
+    }
+  }
+  if (!goldUsd) {
     // Fallback: scrape kitco
     try {
       const html = await fetchViaProxy("https://www.kitco.com/gold-price-today-usa/");
