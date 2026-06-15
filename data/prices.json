@@ -1,6 +1,11 @@
 {
-  "updated_at": "2026-06-15T17:02:55.576061+08:00",
-  "spot": null,
+  "updated_at": "2026-06-15T19:20:10.344614+08:00",
+  "spot": {
+    "usd_per_oz": 4263.5,
+    "usd_hkd": 7.8355,
+    "hkd_per_gram": 1074.05,
+    "hkd_per_tael": 40200.55
+  },
   "retailers": {
     "ctf": {
       "name": "周大福",
